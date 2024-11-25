@@ -93,74 +93,7 @@ run = client.beta.threads.runs.create_and_poll(
 ```
 Más información sobre el ciclo de vida de una Ejecución se puede encontrar en la [Documentación del Ciclo de Vida de Ejecución](https://platform.openai.com/docs/assistants/how-it-works/run-lifecycle)
 
-### Ayudantes de Carga Masiva
-Al crear e interactuar con almacenes vectoriales, puede usar ayudantes de sondeo para monitorear el estado de las operaciones.
 
-Para mayor comodidad, también proporcionamos un ayudante de carga masiva para permitirle cargar varios archivos simultáneamente:
-```python
-sample_files = [Path("sample-paper.pdf"), ...]
-batch = await client.vector_stores.file_batches.upload_and_poll(
-    store.id,
-    files=sample_files,
-)
-```
-
-Ayudantes de Streaming
-El SDK también incluye ayudantes para procesar flujos y manejar eventos entrantes.
-with client.beta.threads.runs.stream(
-    thread_id=thread.id,
-    assistant_id=assistant.id,
-    instructions="Por favor, dirígete al usuario como Jane Doe. El usuario tiene una cuenta premium.",
-) as stream:
-    for event in stream:
-        # Imprimir el texto de los eventos de delta de texto
-        if event.type == "thread.message.delta" and event.data.delta.content:
-            print(event.data.delta.content[0].text)
-Puedes encontrar más información sobre los ayudantes de streaming en la documentación dedicada: helpers.md
-Uso Asíncrono
-Simplemente importa AsyncOpenAI en lugar de OpenAI y usa await con cada llamada a la API:
-import os
-import asyncio
-from openai import AsyncOpenAI
-client = AsyncOpenAI(
-    # Este es el valor por defecto y puede omitirse
-    api_key=os.environ.get("OPENAI_API_KEY"),
-)
-async def main() -> None:
-    chat_completion = await client.chat.completions.create(
-        messages=[
-            {
-                "role": "user",
-                "content": "Di que esto es una prueba",
-            }
-        ],
-        model="gpt-3.5-turbo",
-    )
-asyncio.run(main())
-La funcionalidad entre los clientes sincrónicos y asíncronos es idéntica.
-Respuestas en Streaming
-Proporcionamos soporte para respuestas en streaming utilizando Server Side Events (SSE).
-from openai import OpenAI
-client = OpenAI()
-stream = client.chat.completions.create(
-    model="gpt-4",
-    messages=[{"role": "user", "content": "Di que esto es una prueba"}],
-    stream=True,
-)
-for chunk in stream:
-    print(chunk.choices[0].delta.content or "", end="")
-El cliente asíncrono usa la misma interfaz exacta.
-from openai import AsyncOpenAI
-client = AsyncOpenAI()
-async def main():
-    stream = await client.chat.completions.create(
-        model="gpt-4",
-        messages=[{"role": "user", "content": "Di que esto es una prueba"}],
-        stream=True,
-    )
-    async for chunk in stream:
-        print(chunk.choices[0].delta.content or "", end="")
-asyncio.run(main())
 
 
 
