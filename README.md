@@ -1,37 +1,31 @@
-# OpenAI Python API library
+# Biblioteca de Python para la API de OpenAI
+[![Versión de PyPI](https://img.shields.io/pypi/v/openai.svg)](https://pypi.org/project/openai/)
 
-[![PyPI version](https://img.shields.io/pypi/v/openai.svg)](https://pypi.org/project/openai/)
+La biblioteca de Python de OpenAI proporciona acceso conveniente a la API REST de OpenAI desde cualquier aplicación Python 3.7+. La biblioteca incluye definiciones de tipos para todos los parámetros de solicitud y campos de respuesta, y ofrece clientes síncronos y asíncronos con tecnología de [httpx](https://github.com/encode/httpx).
 
-The OpenAI Python library provides convenient access to the OpenAI REST API from any Python 3.7+
-application. The library includes type definitions for all request params and response fields,
-and offers both synchronous and asynchronous clients powered by [httpx](https://github.com/encode/httpx).
+Fue generada a partir de la [especificación OpenAPI](https://github.com/openai/openai-openapi) con [Stainless](https://stainlessapi.com/).
 
-It is generated from our [OpenAPI specification](https://github.com/openai/openai-openapi) with [Stainless](https://stainlessapi.com/).
+## Documentación
+La documentación de la API REST se puede encontrar en [platform.openai.com](https://platform.openai.com/docs). La API completa de esta biblioteca se puede encontrar en [api.md](api.md).
 
-## Documentation
-
-The REST API documentation can be found on [platform.openai.com](https://platform.openai.com/docs). The full API of this library can be found in [api.md](api.md).
-
-## Installation
-
-> [!IMPORTANT]
-> The SDK was rewritten in v1, which was released November 6th 2023. See the [v1 migration guide](https://github.com/openai/openai-python/discussions/742), which includes scripts to automatically update your code.
+## Instalación
+> [!IMPORTANTE]
+> El SDK fue reescrito en la v1, que se lanzó el 6 de noviembre de 2023. Consulte la [guía de migración a v1](https://github.com/openai/openai-python/discussions/742), que incluye scripts para actualizar automáticamente su código.
 
 ```sh
-# install from PyPI
+# instalar desde PyPI
 pip install openai
 ```
 
-## Usage
-
-The full API of this library can be found in [api.md](api.md).
+## Uso
+La API completa de esta biblioteca se puede encontrar en [api.md](api.md).
 
 ```python
 import os
 from openai import OpenAI
 
 client = OpenAI(
-    # This is the default and can be omitted
+    # Este es el valor predeterminado y se puede omitir
     api_key=os.environ.get("OPENAI_API_KEY"),
 )
 
@@ -39,22 +33,17 @@ chat_completion = client.chat.completions.create(
     messages=[
         {
             "role": "user",
-            "content": "Say this is a test",
+            "content": "Di que esto es una prueba",
         }
     ],
     model="gpt-3.5-turbo",
 )
 ```
 
-While you can provide an `api_key` keyword argument,
-we recommend using [python-dotenv](https://pypi.org/project/python-dotenv/)
-to add `OPENAI_API_KEY="My API Key"` to your `.env` file
-so that your API Key is not stored in source control.
+Aunque puede proporcionar un argumento de palabra clave `api_key`, recomendamos usar [python-dotenv](https://pypi.org/project/python-dotenv/) para agregar `OPENAI_API_KEY="Mi clave de API"` a su archivo `.env` para que su clave de API no se almacene en el control de versiones.
 
-### Vision
-
-With a hosted image:
-
+### Visión
+Con una imagen alojada:
 ```python
 response = client.chat.completions.create(
     model="gpt-4o-mini",
@@ -72,9 +61,7 @@ response = client.chat.completions.create(
     ],
 )
 ```
-
-With the image as a base64 encoded string:
-
+Con la imagen como una cadena codificada en base64:
 ```python
 response = client.chat.completions.create(
     model="gpt-4o-mini",
@@ -92,38 +79,94 @@ response = client.chat.completions.create(
     ],
 )
 ```
+### Ayudantes de Sondeo
+Algunas acciones como iniciar una Ejecución o agregar archivos a almacenes vectoriales son asíncronas y requieren tiempo para completarse. El SDK incluye funciones auxiliares que sondearán el estado hasta que alcance un estado terminal y luego devolverán el objeto resultante.
 
-### Polling Helpers
+Si un método de API genera una acción que podría beneficiarse del sondeo, habrá una versión correspondiente del método que termine en '\_and_poll'.
 
-When interacting with the API some actions such as starting a Run and adding files to vector stores are asynchronous and take time to complete. The SDK includes
-helper functions which will poll the status until it reaches a terminal state and then return the resulting object.
-If an API method results in an action that could benefit from polling there will be a corresponding version of the
-method ending in '\_and_poll'.
-
-For instance to create a Run and poll until it reaches a terminal state you can run:
-
+Por ejemplo, para crear una Ejecución y sondear hasta que alcance un estado terminal:
 ```python
 run = client.beta.threads.runs.create_and_poll(
     thread_id=thread.id,
     assistant_id=assistant.id,
 )
 ```
+Más información sobre el ciclo de vida de una Ejecución se puede encontrar en la [Documentación del Ciclo de Vida de Ejecución](https://platform.openai.com/docs/assistants/how-it-works/run-lifecycle)
 
-More information on the lifecycle of a Run can be found in the [Run Lifecycle Documentation](https://platform.openai.com/docs/assistants/how-it-works/run-lifecycle)
+### Ayudantes de Carga Masiva
+Al crear e interactuar con almacenes vectoriales, puede usar ayudantes de sondeo para monitorear el estado de las operaciones.
 
-### Bulk Upload Helpers
-
-When creating and interacting with vector stores, you can use polling helpers to monitor the status of operations.
-For convenience, we also provide a bulk upload helper to allow you to simultaneously upload several files at once.
-
+Para mayor comodidad, también proporcionamos un ayudante de carga masiva para permitirle cargar varios archivos simultáneamente:
 ```python
 sample_files = [Path("sample-paper.pdf"), ...]
-
 batch = await client.vector_stores.file_batches.upload_and_poll(
     store.id,
     files=sample_files,
 )
 ```
+
+Ayudantes de Streaming
+El SDK también incluye ayudantes para procesar flujos y manejar eventos entrantes.
+with client.beta.threads.runs.stream(
+    thread_id=thread.id,
+    assistant_id=assistant.id,
+    instructions="Por favor, dirígete al usuario como Jane Doe. El usuario tiene una cuenta premium.",
+) as stream:
+    for event in stream:
+        # Imprimir el texto de los eventos de delta de texto
+        if event.type == "thread.message.delta" and event.data.delta.content:
+            print(event.data.delta.content[0].text)
+Puedes encontrar más información sobre los ayudantes de streaming en la documentación dedicada: helpers.md
+Uso Asíncrono
+Simplemente importa AsyncOpenAI en lugar de OpenAI y usa await con cada llamada a la API:
+import os
+import asyncio
+from openai import AsyncOpenAI
+client = AsyncOpenAI(
+    # Este es el valor por defecto y puede omitirse
+    api_key=os.environ.get("OPENAI_API_KEY"),
+)
+async def main() -> None:
+    chat_completion = await client.chat.completions.create(
+        messages=[
+            {
+                "role": "user",
+                "content": "Di que esto es una prueba",
+            }
+        ],
+        model="gpt-3.5-turbo",
+    )
+asyncio.run(main())
+La funcionalidad entre los clientes sincrónicos y asíncronos es idéntica.
+Respuestas en Streaming
+Proporcionamos soporte para respuestas en streaming utilizando Server Side Events (SSE).
+from openai import OpenAI
+client = OpenAI()
+stream = client.chat.completions.create(
+    model="gpt-4",
+    messages=[{"role": "user", "content": "Di que esto es una prueba"}],
+    stream=True,
+)
+for chunk in stream:
+    print(chunk.choices[0].delta.content or "", end="")
+El cliente asíncrono usa la misma interfaz exacta.
+from openai import AsyncOpenAI
+client = AsyncOpenAI()
+async def main():
+    stream = await client.chat.completions.create(
+        model="gpt-4",
+        messages=[{"role": "user", "content": "Di que esto es una prueba"}],
+        stream=True,
+    )
+    async for chunk in stream:
+        print(chunk.choices[0].delta.content or "", end="")
+asyncio.run(main())
+
+
+
+
+--------------------------------------------------------------------------------------- POR TRADUCIR -------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 
 ### Streaming Helpers
 
