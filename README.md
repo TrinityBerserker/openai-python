@@ -94,225 +94,180 @@ run = client.beta.threads.runs.create_and_poll(
 Más información sobre el ciclo de vida de una Ejecución se puede encontrar en la [Documentación del Ciclo de Vida de Ejecución](https://platform.openai.com/docs/assistants/how-it-works/run-lifecycle)
 
 
-
-
-
-
---------------------------------------------------------------------------------------- POR TRADUCIR -------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-
-### Streaming Helpers
-
-The SDK also includes helpers to process streams and handle incoming events.
-
+### Ayudantes de Streaming
+El SDK también incluye ayudantes para procesar flujos de datos y manejar eventos entrantes.
 ```python
 with client.beta.threads.runs.stream(
     thread_id=thread.id,
     assistant_id=assistant.id,
-    instructions="Please address the user as Jane Doe. The user has a premium account.",
+    instructions="Por favor, dirígete al usuario como Jane Doe. El usuario tiene una cuenta premium.",
 ) as stream:
     for event in stream:
-        # Print the text from text delta events
+        # Imprimir el texto de los eventos delta de texto
         if event.type == "thread.message.delta" and event.data.delta.content:
             print(event.data.delta.content[0].text)
 ```
+Puede encontrar más información sobre los ayudantes de streaming en la documentación dedicada: [helpers.md](helpers.md)
 
-More information on streaming helpers can be found in the dedicated documentation: [helpers.md](helpers.md)
-
-## Async usage
-
-Simply import `AsyncOpenAI` instead of `OpenAI` and use `await` with each API call:
-
+## Uso asíncrono
+Simplemente importe `AsyncOpenAI` en lugar de `OpenAI` y use `await` con cada llamada a la API:
 ```python
 import os
 import asyncio
 from openai import AsyncOpenAI
-
 client = AsyncOpenAI(
-    # This is the default and can be omitted
+    # Este es el valor predeterminado y puede omitirse
     api_key=os.environ.get("OPENAI_API_KEY"),
 )
-
-
 async def main() -> None:
     chat_completion = await client.chat.completions.create(
         messages=[
             {
                 "role": "user",
-                "content": "Say this is a test",
+                "content": "Di que esto es una prueba",
             }
         ],
         model="gpt-3.5-turbo",
     )
-
-
 asyncio.run(main())
 ```
+La funcionalidad entre los clientes síncronos y asíncronos es por lo demás idéntica.
 
-Functionality between the synchronous and asynchronous clients is otherwise identical.
-
-## Streaming responses
-
-We provide support for streaming responses using Server Side Events (SSE).
-
+## Respuestas de streaming
+Proporcionamos soporte para respuestas de streaming utilizando Eventos del Lado del Servidor (SSE).
 ```python
 from openai import OpenAI
-
 client = OpenAI()
-
 stream = client.chat.completions.create(
     model="gpt-4",
-    messages=[{"role": "user", "content": "Say this is a test"}],
+    messages=[{"role": "user", "content": "Di que esto es una prueba"}],
     stream=True,
 )
 for chunk in stream:
     print(chunk.choices[0].delta.content or "", end="")
 ```
-
-The async client uses the exact same interface.
-
+El cliente asíncrono utiliza exactamente la misma interfaz.
 ```python
 from openai import AsyncOpenAI
-
 client = AsyncOpenAI()
-
-
 async def main():
     stream = await client.chat.completions.create(
         model="gpt-4",
-        messages=[{"role": "user", "content": "Say this is a test"}],
+        messages=[{"role": "user", "content": "Di que esto es una prueba"}],
         stream=True,
     )
     async for chunk in stream:
         print(chunk.choices[0].delta.content or "", end="")
-
-
 asyncio.run(main())
 ```
 
-## Module-level client
+## Cliente a nivel de módulo
+> [!IMPORTANTE]
+> Recomendamos encarecidamente crear instancias de cliente en lugar de depender del cliente global.
 
-> [!IMPORTANT]
-> We highly recommend instantiating client instances instead of relying on the global client.
-
-We also expose a global client instance that is accessible in a similar fashion to versions prior to v1.
+También exponemos una instancia de cliente global a la que se puede acceder de manera similar a las versiones anteriores a v1.
 
 ```py
 import openai
-
-# optional; defaults to `os.environ['OPENAI_API_KEY']`
+# opcional; por defecto será `os.environ['OPENAI_API_KEY']`
 openai.api_key = '...'
-
-# all client options can be configured just like the `OpenAI` instantiation counterpart
+# todas las opciones del cliente se pueden configurar igual que con la instancia de `OpenAI`
 openai.base_url = "https://..."
 openai.default_headers = {"x-foo": "true"}
-
 completion = openai.chat.completions.create(
     model="gpt-4",
     messages=[
         {
             "role": "user",
-            "content": "How do I output all files in a directory using Python?",
+            "content": "¿Cómo imprimo todos los archivos de un directorio usando Python?",
         },
     ],
 )
 print(completion.choices[0].message.content)
 ```
 
-The API is the exact same as the standard client instance-based API.
+La API es exactamente la misma que la API estándar basada en instancias de cliente.
 
-This is intended to be used within REPLs or notebooks for faster iteration, **not** in application code.
+Esto está pensado para usarse en REPL o cuadernos para una iteración más rápida, **no** en código de aplicación.
 
-We recommend that you always instantiate a client (e.g., with `client = OpenAI()`) in application code because:
+Recomendamos que siempre cree una instancia de cliente (por ejemplo, con `client = OpenAI()`) en código de aplicación porque:
+- Puede ser difícil entender dónde se configuran las opciones del cliente
+- No es posible cambiar ciertas opciones del cliente sin causar posibles condiciones de carrera
+- Es más difícil de simular para pruebas
+- No es posible controlar la limpieza de conexiones de red
 
-- It can be difficult to reason about where client options are configured
-- It's not possible to change certain client options without potentially causing race conditions
-- It's harder to mock for testing purposes
-- It's not possible to control cleanup of network connections
+## Uso de tipos
+Los parámetros de solicitud anidados son [TypedDicts](https://docs.python.org/3/library/typing.html#typing.TypedDict). Las respuestas son [modelos Pydantic](https://docs.pydantic.dev) que también proporcionan métodos de ayuda para cosas como:
+- Serializar de nuevo a JSON, `model.to_json()`
+- Convertir a diccionario, `model.to_dict()`
 
-## Using types
+Las solicitudes y respuestas escritas proporcionan autocompletado y documentación dentro de su editor. Si desea ver errores de tipo en VS Code para ayudar a detectar errores antes, establezca `python.analysis.typeCheckingMode` en `basic`.
 
-Nested request parameters are [TypedDicts](https://docs.python.org/3/library/typing.html#typing.TypedDict). Responses are [Pydantic models](https://docs.pydantic.dev) which also provide helper methods for things like:
+## Paginación
+Los métodos de lista en la API de OpenAI están paginados.
 
-- Serializing back into JSON, `model.to_json()`
-- Converting to a dictionary, `model.to_dict()`
-
-Typed requests and responses provide autocomplete and documentation within your editor. If you would like to see type errors in VS Code to help catch bugs earlier, set `python.analysis.typeCheckingMode` to `basic`.
-
-## Pagination
-
-List methods in the OpenAI API are paginated.
-
-This library provides auto-paginating iterators with each list response, so you do not have to request successive pages manually:
+Esta biblioteca proporciona iteradores de auto-paginación con cada respuesta de lista, por lo que no tiene que solicitar páginas sucesivas manualmente:
 
 ```python
 from openai import OpenAI
-
 client = OpenAI()
-
 all_jobs = []
-# Automatically fetches more pages as needed.
+# Obtiene automáticamente más páginas según sea necesario.
 for job in client.fine_tuning.jobs.list(
     limit=20,
 ):
-    # Do something with job here
+    # Hacer algo con job aquí
     all_jobs.append(job)
 print(all_jobs)
 ```
 
-Or, asynchronously:
+O, de forma asíncrona:
 
 ```python
 import asyncio
 from openai import AsyncOpenAI
-
 client = AsyncOpenAI()
-
-
 async def main() -> None:
     all_jobs = []
-    # Iterate through items across all pages, issuing requests as needed.
+    # Iterar a través de elementos en todas las páginas, emitiendo solicitudes según sea necesario.
     async for job in client.fine_tuning.jobs.list(
         limit=20,
     ):
         all_jobs.append(job)
     print(all_jobs)
-
-
 asyncio.run(main())
 ```
 
-Alternatively, you can use the `.has_next_page()`, `.next_page_info()`, or `.get_next_page()` methods for more granular control working with pages:
+Alternativamente, puede usar los métodos `.has_next_page()`, `.next_page_info()` o `.get_next_page()` para un control más granular al trabajar con páginas:
 
 ```python
 first_page = await client.fine_tuning.jobs.list(
     limit=20,
 )
 if first_page.has_next_page():
-    print(f"will fetch next page using these details: {first_page.next_page_info()}")
+    print(f"se obtendrá la siguiente página usando estos detalles: {first_page.next_page_info()}")
     next_page = await first_page.get_next_page()
-    print(f"number of items we just fetched: {len(next_page.data)}")
-
-# Remove `await` for non-async usage.
+    print(f"número de elementos que acabamos de obtener: {len(next_page.data)}")
+# Eliminar `await` para uso no asíncrono.
 ```
 
-Or just work directly with the returned data:
+O simplemente trabajar directamente con los datos devueltos:
 
 ```python
 first_page = await client.fine_tuning.jobs.list(
     limit=20,
 )
-
-print(f"next page cursor: {first_page.after}")  # => "next page cursor: ..."
+print(f"cursor de siguiente página: {first_page.after}")  # => "cursor de siguiente página: ..."
 for job in first_page.data:
     print(job.id)
-
-# Remove `await` for non-async usage.
+# Eliminar `await` para uso no asíncrono.
 ```
 
-## Nested params
 
-Nested parameters are dictionaries, typed using `TypedDict`, for example:
+
+## Parámetros anidados
+
+Los parámetros anidados son diccionarios, tipados usando `TypedDict`, por ejemplo:
 
 ```python
 from openai import OpenAI
@@ -323,7 +278,7 @@ completion = client.chat.completions.create(
     messages=[
         {
             "role": "user",
-            "content": "Can you generate an example json object describing a fruit?",
+            "content": "¿Puedes generar un objeto JSON de ejemplo que describa una fruta?",
         }
     ],
     model="gpt-3.5-turbo-1106",
@@ -331,9 +286,9 @@ completion = client.chat.completions.create(
 )
 ```
 
-## File uploads
+## Cargas de archivos
 
-Request parameters that correspond to file uploads can be passed as `bytes`, a [`PathLike`](https://docs.python.org/3/library/os.html#os.PathLike) instance or a tuple of `(filename, contents, media type)`.
+Los parámetros de solicitud que corresponden a cargas de archivos pueden pasarse como `bytes`, una instancia de [`PathLike`](https://docs.python.org/3/library/os.html#os.PathLike) o una tupla de `(nombre de archivo, contenido, tipo de medio)`.
 
 ```python
 from pathlib import Path
@@ -347,16 +302,15 @@ client.files.create(
 )
 ```
 
-The async client uses the exact same interface. If you pass a [`PathLike`](https://docs.python.org/3/library/os.html#os.PathLike) instance, the file contents will be read asynchronously automatically.
+El cliente asíncrono usa exactamente la misma interfaz. Si pasas una instancia de [`PathLike`](https://docs.python.org/3/library/os.html#os.PathLike), los contenidos del archivo se leerán de forma asíncrona automáticamente.
 
-## Handling errors
+## Manejo de errores
 
-When the library is unable to connect to the API (for example, due to network connection problems or a timeout), a subclass of `openai.APIConnectionError` is raised.
+Cuando la biblioteca no puede conectarse a la API (por ejemplo, debido a problemas de conexión de red o un tiempo de espera), se genera una subclase de `openai.APIConnectionError`.
 
-When the API returns a non-success status code (that is, 4xx or 5xx
-response), a subclass of `openai.APIStatusError` is raised, containing `status_code` and `response` properties.
+Cuando la API devuelve un código de estado de no éxito (es decir, una respuesta 4xx o 5xx), se genera una subclase de `openai.APIStatusError`, que contiene las propiedades `status_code` y `response`.
 
-All errors inherit from `openai.APIError`.
+Todos los errores heredan de `openai.APIError`.
 
 ```python
 import openai
@@ -370,138 +324,137 @@ try:
         training_file="file-abc123",
     )
 except openai.APIConnectionError as e:
-    print("The server could not be reached")
-    print(e.__cause__)  # an underlying Exception, likely raised within httpx.
+    print("No se pudo acceder al servidor")
+    print(e.__cause__)  # una excepción subyacente, probablemente generada dentro de httpx.
 except openai.RateLimitError as e:
-    print("A 429 status code was received; we should back off a bit.")
+    print("Se recibió un código de estado 429; deberíamos reducir un poco.")
 except openai.APIStatusError as e:
-    print("Another non-200-range status code was received")
+    print("Se recibió otro código de estado fuera del rango 200")
     print(e.status_code)
     print(e.response)
 ```
 
-Error codes are as followed:
+Los códigos de error son los siguientes:
 
-| Status Code | Error Type                 |
-| ----------- | -------------------------- |
-| 400         | `BadRequestError`          |
-| 401         | `AuthenticationError`      |
-| 403         | `PermissionDeniedError`    |
-| 404         | `NotFoundError`            |
-| 422         | `UnprocessableEntityError` |
-| 429         | `RateLimitError`           |
-| >=500       | `InternalServerError`      |
-| N/A         | `APIConnectionError`       |
+| Código de Estado | Tipo de Error                |
+| --------------- | ---------------------------- |
+| 400            | `BadRequestError`            |
+| 401            | `AuthenticationError`        |
+| 403            | `PermissionDeniedError`      |
+| 404            | `NotFoundError`              |
+| 422            | `UnprocessableEntityError`   |
+| 429            | `RateLimitError`             |
+| >=500          | `InternalServerError`        |
+| N/A            | `APIConnectionError`         |
 
-## Request IDs
+## ID de solicitudes
 
-> For more information on debugging requests, see [these docs](https://platform.openai.com/docs/api-reference/debugging-requests)
+> Para obtener más información sobre la depuración de solicitudes, consulte [estos documentos](https://platform.openai.com/docs/api-reference/debugging-requests)
 
-All object responses in the SDK provide a `_request_id` property which is added from the `x-request-id` response header so that you can quickly log failing requests and report them back to OpenAI.
+Todas las respuestas de objetos en el SDK proporcionan una propiedad `_request_id` que se añade desde la cabecera de respuesta `x-request-id` para que pueda registrar rápidamente las solicitudes fallidas e informar sobre ellas a OpenAI.
 
 ```python
 completion = await client.chat.completions.create(
-    messages=[{"role": "user", "content": "Say this is a test"}], model="gpt-4"
+    messages=[{"role": "user", "content": "Di que esto es una prueba"}], model="gpt-4"
 )
 print(completion._request_id)  # req_123
 ```
 
-Note that unlike other properties that use an `_` prefix, the `_request_id` property
-*is* public. Unless documented otherwise, *all* other `_` prefix properties,
-methods and modules are *private*.
+Tenga en cuenta que, a diferencia de otras propiedades que usan un prefijo `_`, la propiedad `_request_id` *es* pública. A menos que se documente lo contrario, *todas* las demás propiedades, métodos y módulos con prefijo `_` son *privados*.
 
+### Reintentos
 
-### Retries
+Ciertos errores se reintentan automáticamente 2 veces por defecto, con una breve retrocesión exponencial.
+Los errores de conexión (por ejemplo, debido a un problema de conectividad de red), 408 Request Timeout, 409 Conflict,
+429 Rate Limit, y errores internos >=500 son reintentados por defecto.
 
-Certain errors are automatically retried 2 times by default, with a short exponential backoff.
-Connection errors (for example, due to a network connectivity problem), 408 Request Timeout, 409 Conflict,
-429 Rate Limit, and >=500 Internal errors are all retried by default.
-
-You can use the `max_retries` option to configure or disable retry settings:
+Puede usar la opción `max_retries` para configurar o desactivar la configuración de reintentos:
 
 ```python
 from openai import OpenAI
 
-# Configure the default for all requests:
+# Configurar el valor predeterminado para todas las solicitudes:
 client = OpenAI(
-    # default is 2
+    # el valor predeterminado es 2
     max_retries=0,
 )
 
-# Or, configure per-request:
+# O, configurar por solicitud:
 client.with_options(max_retries=5).chat.completions.create(
     messages=[
         {
             "role": "user",
-            "content": "How can I get the name of the current day in Node.js?",
+            "content": "¿Cómo puedo obtener el nombre del día actual en Node.js?",
         }
     ],
     model="gpt-3.5-turbo",
 )
 ```
 
-### Timeouts
+### Tiempos de espera
 
-By default requests time out after 10 minutes. You can configure this with a `timeout` option,
-which accepts a float or an [`httpx.Timeout`](https://www.python-httpx.org/advanced/#fine-tuning-the-configuration) object:
+Por defecto, las solicitudes agotan el tiempo de espera después de 10 minutos. Puede configurar esto con una opción `timeout`,
+que acepta un flotante o un objeto [`httpx.Timeout`](https://www.python-httpx.org/advanced/#fine-tuning-the-configuration):
 
 ```python
 from openai import OpenAI
 
-# Configure the default for all requests:
+# Configurar el valor predeterminado para todas las solicitudes:
 client = OpenAI(
-    # 20 seconds (default is 10 minutes)
+    # 20 segundos (el valor predeterminado es 10 minutos)
     timeout=20.0,
 )
 
-# More granular control:
+# Control más detallado:
 client = OpenAI(
     timeout=httpx.Timeout(60.0, read=5.0, write=10.0, connect=2.0),
 )
 
-# Override per-request:
+# Anular por solicitud:
 client.with_options(timeout=5.0).chat.completions.create(
     messages=[
         {
             "role": "user",
-            "content": "How can I list all files in a directory using Python?",
+            "content": "¿Cómo puedo listar todos los archivos en un directorio usando Python?",
         }
     ],
     model="gpt-3.5-turbo",
 )
 ```
 
-On timeout, an `APITimeoutError` is thrown.
+Si se agota el tiempo de espera, se lanza un `APITimeoutError`.
 
-Note that requests that time out are [retried twice by default](#retries).
+Tenga en cuenta que las solicitudes que agotan el tiempo de espera [se reintentan dos veces por defecto](#reintentos).
 
-## Advanced
+## Avanzado
 
-### Logging
+### Registro
 
-We use the standard library [`logging`](https://docs.python.org/3/library/logging.html) module.
+Usamos el módulo [`logging`](https://docs.python.org/3/library/logging.html) de la biblioteca estándar.
 
-You can enable logging by setting the environment variable `OPENAI_LOG` to `debug`.
+Puede habilitar el registro configurando la variable de entorno `OPENAI_LOG` en `debug`.
 
 ```shell
 $ export OPENAI_LOG=debug
 ```
 
-### How to tell whether `None` means `null` or missing
 
-In an API response, a field may be explicitly `null`, or missing entirely; in either case, its value is `None` in this library. You can differentiate the two cases with `.model_fields_set`:
+
+## Cómo determinar si `None` significa `null` o está ausente
+
+En una respuesta de API, un campo puede ser explícitamente `null`, o estar completamente ausente; en ambos casos, su valor es `None` en esta biblioteca. Puede diferenciar los dos casos con `.model_fields_set`:
 
 ```py
 if response.my_field is None:
   if 'my_field' not in response.model_fields_set:
-    print('Got json like {}, without a "my_field" key present at all.')
+    print('Obtuve un json como {}, sin una clave "my_field" presente en absoluto.')
   else:
-    print('Got json like {"my_field": null}.')
+    print('Obtuve un json como {"my_field": null}.')
 ```
 
-### Accessing raw response data (e.g. headers)
+## Accediendo a datos de respuesta raw (por ejemplo, cabeceras)
 
-The "raw" Response object can be accessed by prefixing `.with_raw_response.` to any HTTP method call, e.g.,
+El objeto de Respuesta "raw" se puede acceder anteponiendo `.with_raw_response.` a cualquier llamada de método HTTP, por ejemplo:
 
 ```py
 from openai import OpenAI
@@ -510,39 +463,36 @@ client = OpenAI()
 response = client.chat.completions.with_raw_response.create(
     messages=[{
         "role": "user",
-        "content": "Say this is a test",
+        "content": "Di que esto es una prueba",
     }],
     model="gpt-3.5-turbo",
 )
 print(response.headers.get('X-My-Header'))
 
-completion = response.parse()  # get the object that `chat.completions.create()` would have returned
+completion = response.parse()  # obtener el objeto que `chat.completions.create()` habría devuelto
 print(completion)
 ```
 
-These methods return an [`LegacyAPIResponse`](https://github.com/openai/openai-python/tree/main/src/openai/_legacy_response.py) object. This is a legacy class as we're changing it slightly in the next major version.
+Estos métodos devuelven un objeto [`LegacyAPIResponse`](https://github.com/openai/openai-python/tree/main/src/openai/_legacy_response.py). Esta es una clase heredada ya que la estamos cambiando ligeramente en la próxima versión principal.
 
-For the sync client this will mostly be the same with the exception
-of `content` & `text` will be methods instead of properties. In the
-async client, all methods will be async.
+Para el cliente síncrono, esto será prácticamente lo mismo, con la excepción de que `content` y `text` serán métodos en lugar de propiedades. En el cliente asíncrono, todos los métodos serán asincrónicos.
 
-A migration script will be provided & the migration in general should
-be smooth.
+Se proporcionará un script de migración y la migración en general debería ser sencilla.
 
 #### `.with_streaming_response`
 
-The above interface eagerly reads the full response body when you make the request, which may not always be what you want.
+La interfaz anterior lee ávidamente todo el cuerpo de la respuesta cuando se hace la solicitud, lo que puede no ser siempre lo que se desea.
 
-To stream the response body, use `.with_streaming_response` instead, which requires a context manager and only reads the response body once you call `.read()`, `.text()`, `.json()`, `.iter_bytes()`, `.iter_text()`, `.iter_lines()` or `.parse()`. In the async client, these are async methods.
+Para transmitir el cuerpo de la respuesta, use `.with_streaming_response` en su lugar, que requiere un administrador de contexto y solo lee el cuerpo de la respuesta una vez que llama a `.read()`, `.text()`, `.json()`, `.iter_bytes()`, `.iter_text()`, `.iter_lines()` o `.parse()`. En el cliente asíncrono, estos son métodos asincrónicos.
 
-As such, `.with_streaming_response` methods return a different [`APIResponse`](https://github.com/openai/openai-python/tree/main/src/openai/_response.py) object, and the async client returns an [`AsyncAPIResponse`](https://github.com/openai/openai-python/tree/main/src/openai/_response.py) object.
+Como tal, los métodos `.with_streaming_response` devuelven un objeto [`APIResponse`](https://github.com/openai/openai-python/tree/main/src/openai/_response.py) diferente, y el cliente asíncrono devuelve un objeto [`AsyncAPIResponse`](https://github.com/openai/openai-python/tree/main/src/openai/_response.py).
 
 ```python
 with client.chat.completions.with_streaming_response.create(
     messages=[
         {
             "role": "user",
-            "content": "Say this is a test",
+            "content": "Di que esto es una prueba",
         }
     ],
     model="gpt-3.5-turbo",
@@ -553,19 +503,17 @@ with client.chat.completions.with_streaming_response.create(
         print(line)
 ```
 
-The context manager is required so that the response will reliably be closed.
+El administrador de contexto es obligatorio para que la respuesta se cierre de manera confiable.
 
-### Making custom/undocumented requests
+## Realizando solicitudes personalizadas/no documentadas
 
-This library is typed for convenient access to the documented API.
+Esta biblioteca está tipada para un acceso conveniente a la API documentada.
 
-If you need to access undocumented endpoints, params, or response properties, the library can still be used.
+Si necesita acceder a puntos finales, parámetros o propiedades de respuesta no documentados, la biblioteca aún se puede usar.
 
-#### Undocumented endpoints
+### Puntos finales no documentados
 
-To make requests to undocumented endpoints, you can make requests using `client.get`, `client.post`, and other
-http verbs. Options on the client will be respected (such as retries) will be respected when making this
-request.
+Para hacer solicitudes a puntos finales no documentados, puede hacer solicitudes usando `client.get`, `client.post` y otros verbos http. Las opciones del cliente (como reintentos) se respetarán al hacer esta solicitud.
 
 ```py
 import httpx
@@ -579,117 +527,112 @@ response = client.post(
 print(response.headers.get("x-foo"))
 ```
 
-#### Undocumented request params
+### Parámetros de solicitud no documentados
 
-If you want to explicitly send an extra param, you can do so with the `extra_query`, `extra_body`, and `extra_headers` request
-options.
+Si desea enviar explícitamente un parámetro adicional, puede hacerlo con las opciones de solicitud `extra_query`, `extra_body` y `extra_headers`.
 
-#### Undocumented response properties
+### Propiedades de respuesta no documentadas
 
-To access undocumented response properties, you can access the extra fields like `response.unknown_prop`. You
-can also get all the extra fields on the Pydantic model as a dict with
-[`response.model_extra`](https://docs.pydantic.dev/latest/api/base_model/#pydantic.BaseModel.model_extra).
+Para acceder a propiedades de respuesta no documentadas, puede acceder a los campos adicionales como `response.unknown_prop`. También puede obtener todos los campos adicionales en el modelo Pydantic como un diccionario con [`response.model_extra`](https://docs.pydantic.dev/latest/api/base_model/#pydantic.BaseModel.model_extra).
 
-### Configuring the HTTP client
+### Configurando el cliente HTTP
 
-You can directly override the [httpx client](https://www.python-httpx.org/api/#client) to customize it for your use case, including:
+Puede anular directamente el [cliente httpx](https://www.python-httpx.org/api/#client) para personalizarlo según su caso de uso, incluyendo:
 
-- Support for proxies
-- Custom transports
-- Additional [advanced](https://www.python-httpx.org/advanced/clients/) functionality
+- Soporte para proxies
+- Transportes personalizados
+- Funcionalidad [avanzada](https://www.python-httpx.org/advanced/clients/) adicional
 
 ```python
 from openai import OpenAI, DefaultHttpxClient
 
 client = OpenAI(
-    # Or use the `OPENAI_BASE_URL` env var
-    base_url="http://my.test.server.example.com:8083/v1",
+    # O usar la variable de entorno `OPENAI_BASE_URL`
+    base_url="http://mi.servidor.prueba.ejemplo.com:8083/v1",
     http_client=DefaultHttpxClient(
-        proxies="http://my.test.proxy.example.com",
+        proxies="http://mi.proxy.prueba.ejemplo.com",
         transport=httpx.HTTPTransport(local_address="0.0.0.0"),
     ),
 )
 ```
 
-You can also customize the client on a per-request basis by using `with_options()`:
+También puede personalizar el cliente por solicitud usando `with_options()`:
 
 ```python
 client.with_options(http_client=DefaultHttpxClient(...))
 ```
 
-### Managing HTTP resources
+### Administrando recursos HTTP
 
-By default the library closes underlying HTTP connections whenever the client is [garbage collected](https://docs.python.org/3/reference/datamodel.html#object.__del__). You can manually close the client using the `.close()` method if desired, or with a context manager that closes when exiting.
+De manera predeterminada, la biblioteca cierra las conexiones HTTP subyacentes cuando el cliente es [recolectado por el recolector de basura](https://docs.python.org/3/reference/datamodel.html#object.__del__). Puede cerrar manualmente el cliente usando el método `.close()` si lo desea, o con un administrador de contexto que lo cierre al salir.
 
 ## Microsoft Azure OpenAI
 
-To use this library with [Azure OpenAI](https://learn.microsoft.com/azure/ai-services/openai/overview), use the `AzureOpenAI`
-class instead of the `OpenAI` class.
+Para usar esta biblioteca con [Azure OpenAI](https://learn.microsoft.com/azure/ai-services/openai/overview), use la clase `AzureOpenAI` en lugar de la clase `OpenAI`.
 
-> [!IMPORTANT]
-> The Azure API shape differs from the core API shape which means that the static types for responses / params
-> won't always be correct.
+> [!IMPORTANTE]
+> La forma de la API de Azure difiere de la forma de la API principal, lo que significa que los tipos estáticos para respuestas/parámetros no siempre serán correctos.
 
 ```py
 from openai import AzureOpenAI
 
-# gets the API Key from environment variable AZURE_OPENAI_API_KEY
+# obtiene la clave API de la variable de entorno AZURE_OPENAI_API_KEY
 client = AzureOpenAI(
     # https://learn.microsoft.com/azure/ai-services/openai/reference#rest-api-versioning
     api_version="2023-07-01-preview",
     # https://learn.microsoft.com/azure/cognitive-services/openai/how-to/create-resource?pivots=web-portal#create-a-resource
-    azure_endpoint="https://example-endpoint.openai.azure.com",
+    azure_endpoint="https://ejemplo-endpoint.openai.azure.com",
 )
 
 completion = client.chat.completions.create(
-    model="deployment-name",  # e.g. gpt-35-instant
+    model="nombre-de-despliegue",  # por ejemplo, gpt-35-instant
     messages=[
         {
             "role": "user",
-            "content": "How do I output all files in a directory using Python?",
+            "content": "¿Cómo imprimo todos los archivos de un directorio usando Python?",
         },
     ],
 )
 print(completion.to_json())
 ```
 
-In addition to the options provided in the base `OpenAI` client, the following options are provided:
+Además de las opciones proporcionadas en el cliente base `OpenAI`, se proporcionan las siguientes opciones:
 
-- `azure_endpoint` (or the `AZURE_OPENAI_ENDPOINT` environment variable)
+- `azure_endpoint` (o la variable de entorno `AZURE_OPENAI_ENDPOINT`)
 - `azure_deployment`
-- `api_version` (or the `OPENAI_API_VERSION` environment variable)
-- `azure_ad_token` (or the `AZURE_OPENAI_AD_TOKEN` environment variable)
+- `api_version` (o la variable de entorno `OPENAI_API_VERSION`)
+- `azure_ad_token` (o la variable de entorno `AZURE_OPENAI_AD_TOKEN`)
 - `azure_ad_token_provider`
 
-An example of using the client with Microsoft Entra ID (formerly known as Azure Active Directory) can be found [here](https://github.com/openai/openai-python/blob/main/examples/azure_ad.py).
+Se puede encontrar un ejemplo de uso del cliente con Microsoft Entra ID (anteriormente conocido como Azure Active Directory) [aquí](https://github.com/openai/openai-python/blob/main/examples/azure_ad.py).
 
-## Versioning
+## Versionado
 
-This package generally follows [SemVer](https://semver.org/spec/v2.0.0.html) conventions, though certain backwards-incompatible changes may be released as minor versions:
+Este paquete sigue generalmente las convenciones de [SemVer](https://semver.org/spec/v2.0.0.html), aunque ciertos cambios incompatibles con versiones anteriores pueden lanzarse como versiones menores:
 
-1. Changes that only affect static types, without breaking runtime behavior.
-2. Changes to library internals which are technically public but not intended or documented for external use. _(Please open a GitHub issue to let us know if you are relying on such internals)_.
-3. Changes that we do not expect to impact the vast majority of users in practice.
+1. Cambios que solo afectan los tipos estáticos, sin romper el comportamiento en tiempo de ejecución.
+2. Cambios en los elementos internos de la biblioteca que son técnicamente públicos pero no están destinados o documentados para uso externo. _(Por favor, abra un issue en GitHub para hacernos saber si está utilizando dichos internos)_.
+3. Cambios que no esperamos que impacten a la gran mayoría de los usuarios en la práctica.
 
-We take backwards-compatibility seriously and work hard to ensure you can rely on a smooth upgrade experience.
+Nos tomamos la compatibilidad con versiones anteriores muy en serio y nos esforzamos por garantizar que pueda contar con una experiencia de actualización fluida.
 
-We are keen for your feedback; please open an [issue](https://www.github.com/openai/openai-python/issues) with questions, bugs, or suggestions.
+Estamos interesados en sus comentarios; por favor, abra un [issue](https://www.github.com/openai/openai-python/issues) con preguntas, errores o sugerencias.
 
-### Determining the installed version
+### Determinando la versión instalada
 
-If you've upgraded to the latest version but aren't seeing any new features you were expecting then your python environment is likely still using an older version.
+Si ha actualizado a la última versión pero no ve las nuevas características que esperaba, es probable que su entorno de Python aún esté usando una versión anterior.
 
-You can determine the version that is being used at runtime with:
+Puede determinar la versión que se está utilizando en tiempo de ejecución con:
 
 ```py
 import openai
 print(openai.__version__)
 ```
 
-## Requirements
+## Requisitos
 
-Python 3.7 or higher.
+Python 3.7 o superior.
 
-## Contributing
+## Contribuyendo
 
-See [the contributing documentation](./CONTRIBUTING.md).
+Consulte [la documentación de contribución](./CONTRIBUTING.md).
